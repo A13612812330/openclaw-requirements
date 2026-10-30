@@ -1,0 +1,230 @@
+一、整体架构（先看这个再动手）
+
+你最终会得到一个系统：
+
+数据源（Excel / 游戏后台 / 公告）
+        ↓
+OpenClaw（调度层）
+        ↓
+API分流（免费）
+        ↓
+输出：
+- 数据分析结果
+- 游戏公告总结
+- 每日资讯报告
+二、OpenClaw 完整部署（一步步来）
+1️⃣ 环境准备（你的12400完全够）
+
+安装：
+
+Python 3.10+
+Git
+
+验证：
+
+python --version
+git --version
+2️⃣ 下载 OpenClaw
+
+👉 官方仓库：
+OpenClaw Github
+
+git clone https://github.com/openclaw/openclaw.git
+cd openclaw
+3️⃣ 安装依赖（国内必须用镜像）
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+4️⃣ 创建配置文件
+
+在根目录创建：
+
+.env
+三、免费API接入（核心）
+
+我们做一个统一接入方案（推荐）
+
+🥇 主入口：硅基流动（统一接口）
+
+👉 官网：
+硅基流动官网
+
+注册 → 获取 API Key
+
+.env 配置（直接复制）
+# 主API（统一入口）
+OPENAI_API_KEY=你的硅基key
+OPENAI_BASE_URL=https://api.siliconflow.cn/v1
+
+# 默认模型
+MODEL_MAIN=deepseek-chat
+
+# 分模块模型
+MODEL_ANALYSIS=deepseek-chat
+MODEL_LONGTEXT=qwen-plus
+MODEL_FAST=glm-4-flash
+
+# 兜底
+MODEL_FALLBACK=deepseek-chat
+四、模块化设计（重点）
+
+你要求“功能模块化”，这里直接给你拆好：
+
+模块1：数据分析模块
+
+👉 用：DeepSeek
+
+功能：
+
+数据异常检测
+指标计算
+趋势判断
+模块2：公告解析模块
+
+👉 用：Qwen / Kimi
+
+功能：
+
+游戏更新总结
+玩家影响分析
+模块3：资讯整合模块
+
+👉 用：Qwen
+
+功能：
+
+多来源新闻总结
+输出日报
+模块4：轻量任务模块
+
+👉 用：GLM
+
+功能：
+
+分类
+标题生成
+简单判断
+模块5：兜底模块
+
+👉 用：硅基流动自动切
+
+五、核心调度代码（可直接用）
+
+你可以新建一个：
+
+ai_router.py
+✅ 完整示例代码
+import requests
+import os
+
+BASE_URL = os.getenv("OPENAI_BASE_URL")
+API_KEY = os.getenv("OPENAI_API_KEY")
+
+def call_model(model, prompt):
+    url = f"{BASE_URL}/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {API_KEY}"
+    }
+
+    data = {
+        "model": model,
+        "messages": [
+            {"role": "user", "content": prompt}
+        ]
+    }
+
+    try:
+        res = requests.post(url, headers=headers, json=data, timeout=30)
+        return res.json()["choices"][0]["message"]["content"]
+    except:
+        return None
+
+
+def route(task_type, prompt):
+    if task_type == "analysis":
+        model = os.getenv("MODEL_ANALYSIS")
+
+    elif task_type == "longtext":
+        model = os.getenv("MODEL_LONGTEXT")
+
+    elif task_type == "fast":
+        model = os.getenv("MODEL_FAST")
+
+    else:
+        model = os.getenv("MODEL_MAIN")
+
+    result = call_model(model, prompt)
+
+    # 兜底机制
+    if result is None:
+        result = call_model(os.getenv("MODEL_FALLBACK"), prompt)
+
+    return result
+六、部署表格（你可以直接照着执行）
+步骤	操作	是否必须	时间
+安装Python	3.10+	✅	5分钟
+下载OpenClaw	git clone	✅	2分钟
+安装依赖	pip install	✅	5~10分钟
+注册硅基流动	获取key	✅	3分钟
+配置.env	填key	✅	2分钟
+写router	上面代码	✅	5分钟
+测试调用	python测试	✅	3分钟
+
+👉 总耗时：30分钟内搞定
+
+七、使用教程（最关键）
+🎯 场景1：数据分析
+from ai_router import route
+
+prompt = """
+分析以下数据：
+DAU下降30%，找原因并给建议
+"""
+
+print(route("analysis", prompt))
+🎯 场景2：公告解析
+prompt = "总结以下游戏更新公告，并分析影响"
+
+print(route("longtext", prompt))
+🎯 场景3：资讯日报
+prompt = "整理今日游戏行业新闻，输出3条重点"
+
+print(route("longtext", prompt))
+🎯 场景4：轻量任务
+prompt = "给这个游戏起3个推广标题"
+
+print(route("fast", prompt))
+八、免费额度策略（实战）
+
+你可以这样控制：
+
+白天：
+- DeepSeek 主用
+
+晚上：
+- Qwen / GLM 分担
+
+异常：
+- fallback 自动兜底
+九、你现在这套系统能做到什么
+
+搭完之后你可以：
+
+✅ 自动分析游戏数据
+✅ 自动解读更新公告
+✅ 自动生成日报
+✅ 几乎0成本运行
+
+十、最后给你一个关键建议
+
+不要一开始就搞复杂系统，先跑通：
+
+👉 一个模块（数据分析）
+
+再慢慢加：
+
+公告模块
+资讯模块
+
+
+
+
+pnpm openclaw config set providers.google.apikeys '["AIzaSyBHUcrgar3a2L38SX7_wiG-odTSXbCReC4","AIzaSyB3L97mizXeE2hhgXSEO1ftGOgdBMqtUsY","AIzaSyDZd-8tO-iCg0VluU4diUFVn2CD9CHrZPE"]'
